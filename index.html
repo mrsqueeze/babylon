@@ -33,7 +33,8 @@
     <script>
         var canvas = document.getElementById("renderCanvas"); // Get the canvas element
         var engine = new BABYLON.Engine(canvas, true); // Generate the BABYLON 3D engine
-
+        var ground = null; //holding on to this reference to use out of createSphere
+        var mainProbe = null;
         var spheres = new Array();
 
         	var generateSatelliteMaterial = function (root, color, others) {
@@ -54,7 +55,7 @@
         		probe.attachToMesh(root);
         	}
 
-        var createSphere = function (scene, diameter, mass) {
+        var createSphere = function (scene, ground, diameter, mass) {
             var sphere = BABYLON.MeshBuilder.CreateSphere("sphere" + spheres.length, {diameter:diameter}, scene);
             sphere.position = new BABYLON.Vector3(Math.random()*2, 20, Math.random()*2);
             sphere.physicsImpostor = new BABYLON.PhysicsImpostor(sphere, BABYLON.PhysicsImpostor.SphereImpostor, { mass: mass, restitution: 0.9 }, scene);
@@ -63,6 +64,21 @@
         	var material = new BABYLON.StandardMaterial("satelliteMat" + sphere.name, scene);
         	material.diffuseColor = BABYLON.Color3.Random();
             sphere.material = material;
+
+            var probe = new BABYLON.ReflectionProbe("satelliteProbe" + sphere.name, 512, scene);
+            probe.renderList.push(ground);            
+        	//for (var i = 0; i < spheres.length; i++) {
+        	//	probe.renderList.push(spheres[i]);			
+        	//}
+        		
+        	material.reflectionTexture = probe.cubeTexture;        		
+        	material.reflectionFresnelParameters = new BABYLON.FresnelParameters();
+            material.reflectionFresnelParameters.bias = 0.02;
+        		
+        	probe.attachToMesh(sphere);
+
+            mainProbe.renderList.push(sphere);
+            ground.material.reflectionTexture.renderList.push(sphere)
         }
 
         /******* Add the create scene function ******/
@@ -85,7 +101,7 @@
             //var light2 = new BABYLON.PointLight("light2", new BABYLON.Vector3(0, 10, 0), scene);
             //light2.diffuse = new BABYLON.Color3(1, 0, 0);
 	        //light2.specular = new BABYLON.Color3(1, 1, 1);
-            var light = new BABYLON.HemisphericLight("light1", new BABYLON.Vector3(0, 1, 0), scene);
+            var light = new BABYLON.HemisphericLight("light1", new BABYLON.Vector3(-1, 1, 0), scene);
 
             // Add and manipulate meshes in the scene
             var sphere = BABYLON.MeshBuilder.CreateSphere("sphere", {diameter:2}, scene);
@@ -100,22 +116,47 @@
 
 
             // ground
-            var ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 20, height: 20, subdivsions: 4}, scene);
-            ground.position = new BABYLON.Vector3(0, -1, 0);
+            ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 20, height: 20, subdivsions: 4}, scene);
+            ground.position = new BABYLON.Vector3(0, -2, 0);
             ground.physicsImpostor = new BABYLON.PhysicsImpostor(ground, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 0, restitution: 0.9 }, scene);
-            ground.material = new BABYLON.StandardMaterial("ground", scene);
-            ground.material.diffuseTexture = new BABYLON.Texture("textures/amiga.jpg", scene);
+            ground.material = new BABYLON.StandardMaterial("ground1", scene);
+            ground.material.diffuseTexture = new BABYLON.Texture("https://raw.githubusercontent.com/mrsqueeze/babylon/master/textures/amiga.jpg", scene);
         	ground.material.diffuseTexture.uScale = 10;
         	ground.material.diffuseTexture.vScale = 10;
-            ground.material.reflectionTexture = new BABYLON.MirrorTexture("ground", 1024, scene, true);
+            ground.material.reflectionTexture = new BABYLON.MirrorTexture("ground2", 1024, scene, true);
             ground.material.reflectionTexture.mirrorPlane = new BABYLON.Plane(0, -1.0, 0, -2.0);
-            //ground.material.reflectionTexture.renderList = [blueSphere];
+            ground.material.reflectionTexture.renderList = [];
             ground.material.reflectionTexture.level = 0.5;
 
+            backwall = BABYLON.MeshBuilder.CreateGround("backwall", {width: 20, height: 20, subdivsions: 4}, scene);
+            backwall.position = new BABYLON.Vector3(0, 6, -6);
+            backwall.physicsImpostor = new BABYLON.PhysicsImpostor(backwall, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 0, restitution: 0.9 }, scene);
+            backwall.material = new BABYLON.StandardMaterial("backwall1", scene);
+            backwall.material.diffuseTexture = new BABYLON.Texture("https://raw.githubusercontent.com/mrsqueeze/babylon/master/textures/amiga.jpg", scene);
+        	backwall.material.diffuseTexture.uScale = 10;
+        	backwall.material.diffuseTexture.vScale = 10;
+            backwall.material.reflectionTexture = new BABYLON.MirrorTexture("backwall2", 1024, scene, true);
+            backwall.material.reflectionTexture.mirrorPlane = new BABYLON.Plane(0, -1.0, 0, -2.0);
+            backwall.material.reflectionTexture.renderList = [];
+            backwall.material.reflectionTexture.level = 0.5;
+            backwall.rotation = new BABYLON.Vector3(90, 0, 0);
+
+        	mainProbe = new BABYLON.ReflectionProbe("main", 512, scene);
+        	mainProbe.renderList = [ground];	
+        	mainMaterial.diffuseColor = new BABYLON.Color3(1, 0.5, 0.5);	
+        	mainMaterial.reflectionTexture = mainProbe.cubeTexture;
+        	mainMaterial.reflectionFresnelParameters = new BABYLON.FresnelParameters();
+            mainMaterial.reflectionFresnelParameters.bias = 0.02;
+
             // Add a camera to the scene and attach it to the canvas
-            var camera = new BABYLON.ArcRotateCamera("Camera", Math.PI/2, Math.PI/2.5, 40, sphere.position, scene);
+            var camera = new BABYLON.ArcRotateCamera("Camera", Math.PI/2, Math.PI/2.5, 10, sphere.position, scene);
+            //var camera = new BABYLON.ArcRotateCamera("camera1", 0, 0, 10, BABYLON.Vector3.Zero(), scene);
             camera.attachControl(canvas, true);
 
+            //scene.fogMode = BABYLON.Scene.FOGMODE_LINEAR;
+            //scene.fogColor = scene.clearColor;
+            //scene.fogStart = 20.0;
+            //scene.fogEnd = 50.0;
 
             return scene;
         };
@@ -125,7 +166,7 @@
 
         //https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope/setInterval
         //with parameters
-        setInterval(createSphere, 100, scene, 1, 2);
+        setInterval(createSphere, 3000, scene, ground, 1, 2);
 
         scene.registerBeforeRender(function () {
             //console.debug('registerBeforeRender'); 
